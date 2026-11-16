@@ -41,11 +41,21 @@ const stats = [
 
 type Row = Record<string, string | number | null>
 
+type ArchiveSnapshot = {
+  契约名称: string
+  版本: number
+  生成时间: string
+  校验状态: string
+  已归档数量: number
+  快照: { 记录编号: string; status: string; 归档时间: string }[]
+}
+
 export default function BackupView() {
   const [rows, setRows] = useState<Row[]>([])
   const [total, setTotal] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [snapshot, setSnapshot] = useState<ArchiveSnapshot | null>(null)
   const filterFields = useMemo(() => columns.slice(0, 3), [])
 
   const reload = useCallback(async () => {
@@ -61,6 +71,13 @@ export default function BackupView() {
       setTotal(payload.total ?? 0)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '数据备份列表读取失败')
+    }
+    try {
+      // 备份模块只读取日志归档契约中已完成校验的数据快照
+      const snapshotRes = await request(`${ENDPOINT}/log-archive-snapshot`)
+      setSnapshot(snapshotRes.ok ? ((await snapshotRes.json()) as ArchiveSnapshot) : null)
+    } catch {
+      setSnapshot(null)
     }
   }, [filters])
 
@@ -108,6 +125,17 @@ export default function BackupView() {
             <strong className="stat-value">{item.value}</strong>
           </article>
         ))}
+        <article className="stat-card">
+          <span className="stat-label">日志归档契约快照</span>
+          <strong className="stat-value">
+            {snapshot ? `${snapshot.已归档数量} 条已校验` : '暂无'}
+          </strong>
+          {snapshot && (
+            <span className="stat-label">
+              {snapshot.契约名称} · v{snapshot.版本} · {snapshot.校验状态} · {snapshot.生成时间}
+            </span>
+          )}
+        </article>
       </div>
 
       <form className="filter-bar" onSubmit={(event) => { event.preventDefault(); void reload() }}>

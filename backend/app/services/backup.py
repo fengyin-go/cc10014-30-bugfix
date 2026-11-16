@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.log import CONTRACT_LEDGER, CONTRACT_NAME
 from app.store import store
 
 MODULE = "backup"
@@ -32,6 +33,16 @@ class BackupService:
 
     def get_entry(self, entry_id: int) -> dict[str, Any] | None:
         return store.find(MODULE, entry_id)
+
+    def log_archive_snapshot(self) -> dict[str, Any] | None:
+        """读取「日志归档契约」最新快照；只返回已完成校验的数据快照。"""
+        contract = store.ledger(CONTRACT_LEDGER)
+        if not contract:
+            return None
+        latest = contract[-1]
+        if latest.get("契约名称") != CONTRACT_NAME or latest.get("校验状态") != "已校验":
+            return None
+        return latest
 
     def create_entry(self, values: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
         missing = [field for field in REQUIRED_FIELDS if not str(values.get(field) or "").strip()]

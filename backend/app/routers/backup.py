@@ -30,6 +30,22 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/log-archive-snapshot")
+def log_archive_snapshot() -> dict[str, Any]:
+    """读取「日志归档契约」最新快照：备份模块只消费已完成校验的归档数据。"""
+    snapshot = service.log_archive_snapshot()
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="日志归档契约暂无已校验快照")
+    return snapshot
+
+
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出数据备份清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "backup", "total": total, "items": items}
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条备份策略明细；不存在时给出可读的错误说明。"""
@@ -56,10 +72,3 @@ def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出数据备份清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "backup", "total": total, "items": items}

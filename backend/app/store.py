@@ -14,12 +14,21 @@ class Store:
         self._tables: dict[str, list[dict[str, Any]]] = {
             name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
         }
+        self._ledgers: dict[str, list[dict[str, Any]]] = {}
 
     def module_names(self) -> list[str]:
         return sorted(self._tables)
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])
+
+    def ledger(self, name: str) -> list[dict[str, Any]]:
+        """跨模块台账（如归档数据集、审计记录、归档契约快照）。
+
+        台账不属于业务模块清单，不参与概览统计，只按名字存取，
+        供需要跨模块核对的数据（例如备份模块读取日志归档契约）使用。
+        """
+        return self._ledgers.setdefault(name, [])
 
     def find(self, module: str, entry_id: int) -> dict[str, Any] | None:
         for row in self.rows(module):
